@@ -1,6 +1,24 @@
 """
 @author: Maziar Raissi
+
+Additions by Ram Ananth
 """
+
+"""
+The whole domain is split as 6 regions as defined below
+r = right boundary
+l = left boundary
+t = top boundary
+b = bottom boundary
+ts = tissue
+fl = fluorophore
+
+f is governing equation 
+g is boundary condition
+
+x1 and x2 are dimensions
+"""
+
 
 import sys
 sys.path.insert(0, '../../Utilities/')
@@ -25,65 +43,86 @@ tf.set_random_seed(1234)
 
 class PhysicsInformedNN:
     # Initialize the class
-    def __init__(self, x0, u0, v0, tb, X_f, layers, lb, ub):
+    def __init__(self, x0, tb, X_f, layers, lb, ub):
         
-        X0 = np.concatenate((x0, 0*x0), 1) # (x0, 0)
-        X_lb = np.concatenate((0*tb + lb[0], tb), 1) # (lb[0], tb)
-        X_ub = np.concatenate((0*tb + ub[0], tb), 1) # (ub[0], tb)
+        X_lb = np.concatenate((0*tb + lb[0], tb), 1) # (lb[0], tb) To be filled
+        X_ub = np.concatenate((0*tb + ub[0], tb), 1) # (ub[0], tb) To be filled
         
         self.lb = lb
         self.ub = ub
-               
-        self.x0 = X0[:,0:1]
-        self.t0 = X0[:,1:2]
 
-        self.x_lb = X_lb[:,0:1]
-        self.t_lb = X_lb[:,1:2]
+        self.x1_r = X['r'][:,0:1]
+        self.x2_r = X['r'][:,1:2]
+        
+        self.x1_l = X['l'][:,0:1]
+        self.x2_l = X['l'][:,1:2]
 
-        self.x_ub = X_ub[:,0:1]
-        self.t_ub = X_ub[:,1:2]
-        
-        self.x_f = X_f[:,0:1]
-        self.t_f = X_f[:,1:2]
-        
-        self.u0 = u0
-        self.v0 = v0
-        
+        self.x1_t = X['t'][:,0:1]
+        self.x2_t = X['t'][:,1:2]
+
+        self.x1_b = X['b'][:,0:1]
+        self.x2_b = X['b'][:,1:2]
+
+        self.x1_ts = X['ts'][:,0:1]
+        self.x2_ts = X['ts'][:,1:2]
+
+        self.x1_fl = X['fl'][:,0:1]
+        self.x2_fl = X['fl'][:,1:2]
+           
         # Initialize NNs
         self.layers = layers
         self.weights, self.biases = self.initialize_NN(layers)
         
         # tf Placeholders        
-        self.x0_tf = tf.placeholder(tf.float32, shape=[None, self.x0.shape[1]])
-        self.t0_tf = tf.placeholder(tf.float32, shape=[None, self.t0.shape[1]])
+
+        self.x1_r_tf = tf.placeholder(tf.float32, shape=[None, self.x1_r.shape[1]])
+        self.x2_r_tf = tf.placeholder(tf.float32, shape=[None, self.x2_r.shape[1]])
+
+        self.x1_l_tf = tf.placeholder(tf.float32, shape=[None, self.x1_l.shape[1]])
+        self.x2_l_tf = tf.placeholder(tf.float32, shape=[None, self.x2_l.shape[1]])
         
-        self.u0_tf = tf.placeholder(tf.float32, shape=[None, self.u0.shape[1]])
-        self.v0_tf = tf.placeholder(tf.float32, shape=[None, self.v0.shape[1]])
+        self.x1_t_tf = tf.placeholder(tf.float32, shape=[None, self.x1_t.shape[1]])
+        self.x2_t_tf = tf.placeholder(tf.float32, shape=[None, self.x2_t.shape[1]])
+
+        self.x1_b_tf = tf.placeholder(tf.float32, shape=[None, self.x1_b.shape[1]])
+        self.x2_b_tf = tf.placeholder(tf.float32, shape=[None, self.x2_b.shape[1]])
+
+        self.x1_ts_tf = tf.placeholder(tf.float32, shape=[None, self.x1_ts.shape[1]])
+        self.x2_ts_tf = tf.placeholder(tf.float32, shape=[None, self.x2_ts.shape[1]])
+
+        self.x1_fl_tf = tf.placeholder(tf.float32, shape=[None, self.x1_fl.shape[1]])
+        self.x2_fl_tf = tf.placeholder(tf.float32, shape=[None, self.x2_fl.shape[1]])
         
-        self.x_lb_tf = tf.placeholder(tf.float32, shape=[None, self.x_lb.shape[1]])
-        self.t_lb_tf = tf.placeholder(tf.float32, shape=[None, self.t_lb.shape[1]])
-        
-        self.x_ub_tf = tf.placeholder(tf.float32, shape=[None, self.x_ub.shape[1]])
-        self.t_ub_tf = tf.placeholder(tf.float32, shape=[None, self.t_ub.shape[1]])
-        
-        self.x_f_tf = tf.placeholder(tf.float32, shape=[None, self.x_f.shape[1]])
-        self.t_f_tf = tf.placeholder(tf.float32, shape=[None, self.t_f.shape[1]])
 
         # tf Graphs
-        self.u0_pred, self.v0_pred, _ , _ = self.net_uv(self.x0_tf, self.t0_tf)
-        self.u_lb_pred, self.v_lb_pred, self.u_x_lb_pred, self.v_x_lb_pred = self.net_uv(self.x_lb_tf, self.t_lb_tf)
-        self.u_ub_pred, self.v_ub_pred, self.u_x_ub_pred, self.v_x_ub_pred = self.net_uv(self.x_ub_tf, self.t_ub_tf)
-        self.f_u_pred, self.f_v_pred = self.net_f_uv(self.x_f_tf, self.t_f_tf)
+        self.phi_x_r_pred, self.phi_m_r_pred,self.phi_x_x1_r_pred, self.phi_m_x1_r_pred, self.phi_x_x2_r_pred, self.phi_m_x2_r_pred = self.net_uv(self.x1_r_tf, self.x2_r_tf)
+        self.g_x_r_pred,self.g_m_r_pred = self.net_g_x1(self.x1_r_tf, self.x2_r_tf)
+
+        self.phi_x_l_pred, self.phi_m_l_pred,self.phi_x_x1_l_pred, self.phi_m_x1_l_pred, self.phi_x_x2_l_pred, self.phi_m_x2_l_pred = self.net_uv(self.x1_l_tf, self.x2_l_tf)
+        self.g_x_l_pred,self.g_m_l_pred = self.net_g_x1(self.x1_l_tf, self.x2_l_tf)
+
+        self.phi_x_t_pred, self.phi_m_t_pred,self.phi_x_x1_t_pred, self.phi_m_x1_t_pred, self.phi_x_x2_t_pred, self.phi_m_x2_t_pred = self.net_uv(self.x1_t_tf, self.x2_t_tf)
+        self.g_x_t_pred,self.g_m_t_pred = self.net_g_x2(self.x1_t_tf, self.x2_t_tf)
+
+        self.phi_x_b_pred, self.phi_m_b_pred,self.phi_x_x1_b_pred, self.phi_m_x1_b_pred, self.phi_x_x2_b_pred, self.phi_m_x2_b_pred = self.net_uv(self.x1_b_tf, self.x2_b_tf)
+        self.g_x_b_pred,self.g_m_b_pred= self.net_g_x2(self.x1_b_tf, self.x2_b_tf)
+
+        self.f_x_pred, self.f_m_pred = self.net_f_uv(self.x1_ts_tf, self.x2_ts_tf)
+        self.f_x_fl_pred, self.f_m_fl_pred = self.net_fl_uv(self.x1_fl_tf, self.x2_fl_tf)
         
         # Loss
-        self.loss = tf.reduce_mean(tf.square(self.u0_tf - self.u0_pred)) + \
-                    tf.reduce_mean(tf.square(self.v0_tf - self.v0_pred)) + \
-                    tf.reduce_mean(tf.square(self.u_lb_pred - self.u_ub_pred)) + \
-                    tf.reduce_mean(tf.square(self.v_lb_pred - self.v_ub_pred)) + \
-                    tf.reduce_mean(tf.square(self.u_x_lb_pred - self.u_x_ub_pred)) + \
-                    tf.reduce_mean(tf.square(self.v_x_lb_pred - self.v_x_ub_pred)) + \
-                    tf.reduce_mean(tf.square(self.f_u_pred)) + \
-                    tf.reduce_mean(tf.square(self.f_v_pred))
+        self.loss = tf.reduce_mean(tf.square(self.f_x_pred)) + \
+                    tf.reduce_mean(tf.square(self.f_m_pred))+ \
+                    tf.reduce_mean(tf.square(self.f_x_fl_pred)) + \
+                    tf.reduce_mean(tf.square(self.f_m_fl_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_x_r_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_m_r_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_x_l_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_m_l_pred))
+                    tf.reduce_mean(tf.square(self.g_x_t_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_m_t_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_x_b_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_m_b_pred))
         
         # # Optimizers
         # self.optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
@@ -134,42 +173,91 @@ class PhysicsInformedNN:
         Y = tf.add(tf.matmul(H, W), b)
         return Y
     
-    def net_uv(self, x, t):
-        X = tf.concat([x,t],1)
+    def net_uv(self, x1, x2):
+        X = tf.concat([x1,x2],1)
         
         uv = self.neural_net(X, self.weights, self.biases)
         u = uv[:,0:1]
         v = uv[:,1:2]
         
-        u_x = tf.gradients(u, x)[0]
-        v_x = tf.gradients(v, x)[0]
+        u_x1 = tf.gradients(u, x1)[0]
+        v_x1 = tf.gradients(v, x1)[0]
 
-        return u, v, u_x, v_x
+        u_x2 = tf.gradients(u, x2)[0]
+        v_x2 = tf.gradients(v, x2)[0]
 
-    def net_f_uv(self, x, t):
-        u, v, u_x, v_x = self.net_uv(x,t)
+        return u, v, u_x1, v_x1, u_x2, v_x2
+
+    def net_f_uv(self, x1, x2):
+        u, v, u_x1, v_x1, u_x2, v_x2  = self.net_uv(x1,x2)
         
-        u_t = tf.gradients(u, t)[0]
-        u_xx = tf.gradients(u_x, x)[0]
+        u_xx1 = tf.gradients(u_x1, x1)[0]
+        u_xx2 = tf.gradients(u_x2, x2)[0]
         
-        v_t = tf.gradients(v, t)[0]
-        v_xx = tf.gradients(v_x, x)[0]
+        v_xx1 = tf.gradients(v_x1, x1)[0]
+        v_xx2 = tf.gradients(v_x2, x2)[0]
         
-        f_u = u_t + 0.5*v_xx + (u**2 + v**2)*v
-        f_v = v_t - 0.5*u_xx - (u**2 + v**2)*u   
+        f_x = -k_x*(u_xx1+uxx2) + mu_x*u 
+        f_m = -k_m*(v_xx1+vxx2) + mu_m*v - gamma*u
         
-        return f_u, f_v
+        return f_x, f_m
+
+    def net_fl_uv(self, x1, x2):
+        u, v, u_x1, v_x1, u_x2, v_x2  = self.net_uv(x1,x2)
+        
+        u_xx1 = tf.gradients(u_x1, x1)[0]
+        u_xx2 = tf.gradients(u_x2, x2)[0]
+        
+        v_xx1 = tf.gradients(v_x1, x1)[0]
+        v_xx2 = tf.gradients(v_x2, x2)[0]
+        
+        f_x = -k_f_x*(u_xx1+uxx2) + mu_f_x*u 
+        f_m = -k_f_m*(v_xx1+vxx2) + mu_f_m*v - gamma_f*u
+        
+        return f_x, f_m
+
+    def net_g_x1(self, x1, x2, sign):
+        u, v, u_x1, v_x1, u_x2, v_x2  = self.net_uv(x1,x2)
+        
+        if sign == 'pos':
+            g_x = k_x * u_x1 + rho_x*u
+            g_m = k_m * v_x1 + rho_m*v
+        elif sign== 'neg':
+            g_x = -k_x * u_x1 + rho_x*u
+            g_m = -k_m * v_x1 + rho_m*v
+
+        return g_x,g_m
+
+    def net_g_x2(self, x1, x2, sign):
+        u, v, u_x1, v_x1, u_x2, v_x2  = self.net_uv(x1,x2)
+        
+        if sign == 'pos':
+            g_x = k_x * u_x2 + rho_x*u
+            g_m = k_m * v_x2 + rho_m*v
+        elif sign== 'neg':
+            g_x = -k_x * u_x2 + rho_x*u
+            g_m = -k_m * v_x2 + rho_m*v
+
+        return g_x,g_m
+
+  
     
     def callback(self, loss):
         print('Loss:', loss)
         
     def train(self, nIter):
         
-        tf_dict = {self.x0_tf: self.x0, self.t0_tf: self.t0,
-                   self.u0_tf: self.u0, self.v0_tf: self.v0,
-                   self.x_lb_tf: self.x_lb, self.t_lb_tf: self.t_lb,
-                   self.x_ub_tf: self.x_ub, self.t_ub_tf: self.t_ub,
-                   self.x_f_tf: self.x_f, self.t_f_tf: self.t_f}
+        tf_dict = {
+
+                   self.x1_r_tf: self.x1_r, self.x2_r_tf: self.x2_r,
+                   self.x1_l_tf: self.x1_l, self.x2_l_tf: self.x2_l,
+                   self.x1_t_tf: self.x1_t, self.x2_t_tf: self.x2_t,
+                   self.x1_b_tf: self.x1_b, self.x2_b_tf: self.x2_b,
+
+                   self.x1_ts_tf: self.x1_ts, self.x2_ts_tf: self.x2_ts,
+                   self.x1_fl_tf: self.x1_fl, self.x2_fl_tf: self.x2_fl,
+
+                   }
         
         start_time = time.time()
         for it in range(nIter):
@@ -189,28 +277,28 @@ class PhysicsInformedNN:
                                 loss_callback = self.callback)        
                                     
     
-    def predict(self, X_star):
+    # def predict(self, X_star):
         
-        tf_dict = {self.x0_tf: X_star[:,0:1], self.t0_tf: X_star[:,1:2]}
+    #     tf_dict = {self.x0_tf: X_star[:,0:1], self.t0_tf: X_star[:,1:2]}
         
-        u_star = self.sess.run(self.u0_pred, tf_dict)  
-        v_star = self.sess.run(self.v0_pred, tf_dict)  
+    #     u_star = self.sess.run(self.u0_pred, tf_dict)  
+    #     v_star = self.sess.run(self.v0_pred, tf_dict)  
         
         
-        tf_dict = {self.x_f_tf: X_star[:,0:1], self.t_f_tf: X_star[:,1:2]}
+    #     tf_dict = {self.x_f_tf: X_star[:,0:1], self.t_f_tf: X_star[:,1:2]}
         
-        f_u_star = self.sess.run(self.f_u_pred, tf_dict)
-        f_v_star = self.sess.run(self.f_v_pred, tf_dict)
+    #     f_u_star = self.sess.run(self.f_u_pred, tf_dict)
+    #     f_v_star = self.sess.run(self.f_v_pred, tf_dict)
                
-        return u_star, v_star, f_u_star, f_v_star
+    #     return u_star, v_star, f_u_star, f_v_star
     
 if __name__ == "__main__": 
      
     noise = 0.0        
     
     # Doman bounds
-    lb = np.array([-1.0, -1.0])
-    ub = np.array([1.0, 1.0])
+    lb = np.array([-5.0, -5.0])
+    ub = np.array([5.0, 5.0])
 
     N0 = 50
     N_b = 50
@@ -221,13 +309,13 @@ if __name__ == "__main__":
     
     t = data['tt'].flatten()[:,None]
     x = data['x'].flatten()[:,None]
+    print(t.shape)
 
     Exact = data['uu']
     Exact_u = np.real(Exact)
     Exact_v = np.imag(Exact)
     Exact_h = np.sqrt(Exact_u**2 + Exact_v**2)
     
-    print(Exact_u.shape,Exact_v.shape)
     X, T = np.meshgrid(x,t)
     
     X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
@@ -242,8 +330,10 @@ if __name__ == "__main__":
 #     u0 = Exact_u[idx_x,0:1]
 #     v0 = Exact_v[idx_x,0:1]
     
-#     idx_t = np.random.choice(t.shape[0], N_b, replace=False)
-#     tb = t[idx_t,:]
+    idx_t = np.random.choice(t.shape[0], N_b, replace=False)
+    tb = t[idx_t,:]
+    print(np.concatenate((0*tb + lb[0], tb), 1).shape)
+    print(np.concatenate((0*tb + lb[0], tb), 1)[:,0:1].shape)
     
 #     X_f = lb + (ub-lb)*lhs(2, N_f)
             

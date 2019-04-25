@@ -2,7 +2,7 @@
 
 # Tissue
 
-# mu_x = 150
+# mu_x = 
 # mu_m = 
 # k_x = 
 # k_m = 
