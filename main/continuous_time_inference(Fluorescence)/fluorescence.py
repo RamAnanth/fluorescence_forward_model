@@ -290,7 +290,7 @@ class PhysicsInformedNN:
     #     return u_star, v_star, f_u_star, f_v_star
     
 if __name__ == "__main__": 
-     
+    """
     noise = 0.0        
     
     # Doman bounds
@@ -314,7 +314,46 @@ if __name__ == "__main__":
     Exact_h = np.sqrt(Exact_u**2 + Exact_v**2)
     
     X, T = np.meshgrid(x,t)
-    
+    """
+    dim=2
+    k=10       #-k to +k in both directions
+    #fluorophore position definition
+    v_s=0.25 
+    v_x1=0
+    v_x2=0
+    N_tissue=60000
+    t_set=-k+(2*k*lhs(dim,N_tissue))
+    for i in range(t_set.shape[0]-1,-1,-1):
+    if (t_set[i,0]<=(v_x1+v_s) and t_set[i,0]>=(v_x1-v_s)) and (t_set[i,1]<=(v_x2+v_s) and t_set[i,0]>=(v_x2-v_s)):
+        t_set=np.delete(t_set,i,axis=0)
+    N_f=20000
+    f_set=lhs(dim,N_f)
+    f_set[:,0]=v_x1-v_s+(2*v_s*f_set[:,0])
+    f_set[:,1]=v_x2-v_s+(2*v_s*f_set[:,1])
+    N_b=1000
+
+    #Left boundary data
+    lb_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
+    x1_lb=-k*np.ones(N_b).reshape(N_b,1)
+    lb_set=np.append(x1_lb,lb_set,axis=1)
+
+    #Right boundary data
+    rb_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
+    x1_rb=k*np.ones(N_b).reshape(N_b,1)
+    rb_set=np.append(x1_rb,rb_set,axis=1)
+
+    #Top Boundary
+    ub_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
+    x2_ub=k*np.ones(N_b).reshape(N_b,1)
+    ub_set=np.append(ub_set,x2_ub,axis=1)
+
+    #Bottom Boundary
+    bb_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
+    x2_bb=-k*np.ones(N_b).reshape(N_b,1)
+    bb_set=np.append(bb_set,x2_bb,axis=1)
+
+    X={'r':rb_set,'l':lb_set,'t':ub_set,'b':bb_set,'ts':t_set,'fl':f_set}
+
     # X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
     # u_star = Exact_u.T.flatten()[:,None]
     # v_star = Exact_v.T.flatten()[:,None]
