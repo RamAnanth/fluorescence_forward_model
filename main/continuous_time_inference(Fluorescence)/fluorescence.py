@@ -1,7 +1,7 @@
 """
 @author: Maziar Raissi
 
-Additions by Ram Ananth
+Modifications by Ram Ananth
 """
 
 """
@@ -43,7 +43,7 @@ tf.set_random_seed(1234)
 
 class PhysicsInformedNN:
     # Initialize the class
-    def __init__(self, x0, tb, X_f, layers, lb, ub):
+    def __init__(self, X, layers, lb, ub):
         
         X_lb = np.concatenate((0*tb + lb[0], tb), 1) # (lb[0], tb) To be filled
         X_ub = np.concatenate((0*tb + ub[0], tb), 1) # (ub[0], tb) To be filled
@@ -118,7 +118,7 @@ class PhysicsInformedNN:
                     tf.reduce_mean(tf.square(self.g_x_r_pred)) + \
                     tf.reduce_mean(tf.square(self.g_m_r_pred)) + \
                     tf.reduce_mean(tf.square(self.g_x_l_pred)) + \
-                    tf.reduce_mean(tf.square(self.g_m_l_pred))
+                    tf.reduce_mean(tf.square(self.g_m_l_pred)) + \
                     tf.reduce_mean(tf.square(self.g_x_t_pred)) + \
                     tf.reduce_mean(tf.square(self.g_m_t_pred)) + \
                     tf.reduce_mean(tf.square(self.g_x_b_pred)) + \
@@ -276,7 +276,10 @@ class PhysicsInformedNN:
                                 fetches = [self.loss], 
                                 loss_callback = self.callback)        
                                     
-    
+    """
+    To do
+    """
+
     # def predict(self, X_star):
         
     #     tf_dict = {self.x0_tf: X_star[:,0:1], self.t0_tf: X_star[:,1:2]}
@@ -318,10 +321,10 @@ if __name__ == "__main__":
     
     X, T = np.meshgrid(x,t)
     
-    X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
-    u_star = Exact_u.T.flatten()[:,None]
-    v_star = Exact_v.T.flatten()[:,None]
-    h_star = Exact_h.T.flatten()[:,None]
+    # X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
+    # u_star = Exact_u.T.flatten()[:,None]
+    # v_star = Exact_v.T.flatten()[:,None]
+    # h_star = Exact_h.T.flatten()[:,None]
     
 #     ###########################
     
@@ -330,10 +333,8 @@ if __name__ == "__main__":
 #     u0 = Exact_u[idx_x,0:1]
 #     v0 = Exact_v[idx_x,0:1]
     
-    idx_t = np.random.choice(t.shape[0], N_b, replace=False)
-    tb = t[idx_t,:]
-    print(np.concatenate((0*tb + lb[0], tb), 1).shape)
-    print(np.concatenate((0*tb + lb[0], tb), 1)[:,0:1].shape)
+    # idx_t = np.random.choice(t.shape[0], N_b, replace=False)
+    # tb = t[idx_t,:]
     
 #     X_f = lb + (ub-lb)*lhs(2, N_f)
             
