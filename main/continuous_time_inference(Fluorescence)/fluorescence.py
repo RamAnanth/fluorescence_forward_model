@@ -44,6 +44,8 @@ tf.set_random_seed(1234)
 class PhysicsInformedNN:
     # Initialize the class
     def __init__(self, X, layers):
+        self.q     =
+        self.gamma =
         
         self.x1_r = X['r'][:,0:1]
         self.x2_r = X['r'][:,1:2]
@@ -62,6 +64,9 @@ class PhysicsInformedNN:
 
         self.x1_fl = X['fl'][:,0:1]
         self.x2_fl = X['fl'][:,1:2]
+
+        self.x1_so = X['so'][:,0:1]
+        self/x2_so - X['so'][:,1:2]
            
         # Initialize NNs
         self.layers = layers
@@ -86,6 +91,9 @@ class PhysicsInformedNN:
 
         self.x1_fl_tf = tf.placeholder(tf.float32, shape=[None, self.x1_fl.shape[1]])
         self.x2_fl_tf = tf.placeholder(tf.float32, shape=[None, self.x2_fl.shape[1]])
+
+        self.x1_so_tf = tf.placeholder(tf.float32, shape=[None, self.x1_so.shape[1]])
+        self.x2_so_tf = tf.placeholder(tf.float32, shape=[None, self.x2_so.shape[1]])
         
 
         # tf Graphs
@@ -103,6 +111,8 @@ class PhysicsInformedNN:
 
         self.f_x_pred, self.f_m_pred = self.net_f_uv(self.x1_ts_tf, self.x2_ts_tf)
         self.f_x_fl_pred, self.f_m_fl_pred = self.net_fl_uv(self.x1_fl_tf, self.x2_fl_tf)
+
+        self.f_x_so_pred, self.f_m_so_pred = self.net_so_uv(self.x1_so_tf, self.x2_so_tf, self.q)        
         
         # Loss
         self.loss = tf.reduce_mean(tf.square(self.f_x_pred)) + \
@@ -116,7 +126,9 @@ class PhysicsInformedNN:
                     tf.reduce_mean(tf.square(self.g_x_t_pred)) + \
                     tf.reduce_mean(tf.square(self.g_m_t_pred)) + \
                     tf.reduce_mean(tf.square(self.g_x_b_pred)) + \
-                    tf.reduce_mean(tf.square(self.g_m_b_pred))
+                    tf.reduce_mean(tf.square(self.g_m_b_pred)) + \
+                    self.gamma*tf.reduce_mean(tf.square(self.f_x_so_pred))+ \
+                    self.gamma*tf.reduce_mean(tf.square(self.f_m_so_pred))   
         
         # # Optimizers
         # self.optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
@@ -192,6 +204,20 @@ class PhysicsInformedNN:
         v_xx2 = tf.gradients(v_x2, x2)[0]
         
         f_x = -k_x*(u_xx1+uxx2) + mu_x*u 
+        f_m = -k_m*(v_xx1+vxx2) + mu_m*v - gamma*u
+        
+        return f_x, f_m
+
+    def net_so_uv(self, x1, x2,q):
+        u, v, u_x1, v_x1, u_x2, v_x2  = self.net_uv(x1,x2)
+        
+        u_xx1 = tf.gradients(u_x1, x1)[0]
+        u_xx2 = tf.gradients(u_x2, x2)[0]
+        
+        v_xx1 = tf.gradients(v_x1, x1)[0]
+        v_xx2 = tf.gradients(v_x2, x2)[0]
+        
+        f_x = -k_x*(u_xx1+uxx2) + mu_x*u - q
         f_m = -k_m*(v_xx1+vxx2) + mu_m*v - gamma*u
         
         return f_x, f_m
@@ -318,13 +344,15 @@ if __name__ == "__main__":
     dim=2
     k=10       #-k to +k in both directions
     #fluorophore position definition
+
+    so_pts=[]
     v_s=0.25 
     v_x1=0
     v_x2=0
     N_tissue=60000
     t_set=-k+(2*k*lhs(dim,N_tissue))
     for i in range(t_set.shape[0]-1,-1,-1):
-    if (t_set[i,0]<=(v_x1+v_s) and t_set[i,0]>=(v_x1-v_s)) and (t_set[i,1]<=(v_x2+v_s) and t_set[i,0]>=(v_x2-v_s)):
+    if ((t_set[i,0]<=(v_x1+v_s) and t_set[i,0]>=(v_x1-v_s)) and (t_set[i,1]<=(v_x2+v_s) and t_set[i,0]>=(v_x2-v_s))) or ([t_set[i,0],t_set[i,1]] in so_pts):
         t_set=np.delete(t_set,i,axis=0)
     N_f=20000
     f_set=lhs(dim,N_f)
@@ -353,6 +381,8 @@ if __name__ == "__main__":
     bb_set=np.append(bb_set,x2_bb,axis=1)
 
     X={'r':rb_set,'l':lb_set,'t':ub_set,'b':bb_set,'ts':t_set,'fl':f_set}
+
+    X['so']=np.array(so_pts)
 
     # X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
     # u_star = Exact_u.T.flatten()[:,None]
