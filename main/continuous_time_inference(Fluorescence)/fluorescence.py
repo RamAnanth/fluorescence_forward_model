@@ -289,6 +289,7 @@ class PhysicsInformedNN:
 
                    self.x1_ts_tf: self.x1_ts, self.x2_ts_tf: self.x2_ts,
                    self.x1_fl_tf: self.x1_fl, self.x2_fl_tf: self.x2_fl,
+                   self.x1_so_tf: self.x1_so, self.x2_so_tf: self.x2_so
 
                    }
         
