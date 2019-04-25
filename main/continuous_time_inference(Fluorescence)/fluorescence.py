@@ -68,6 +68,9 @@ class PhysicsInformedNN:
         self.x2_so = X['so'][:,1:2]
 
         
+
+
+        
            
         # Initialize NNs
         self.layers = layers
@@ -288,7 +291,7 @@ class PhysicsInformedNN:
 
                    self.x1_ts_tf: self.x1_ts, self.x2_ts_tf: self.x2_ts,
                    self.x1_fl_tf: self.x1_fl, self.x2_fl_tf: self.x2_fl,
-                   self.x1_so_tf: self.x1_so, self.x2_so_tf: self.x2_so
+                   self.x1_so_tf: self.x1_so, self.x2_so_tf: self.x2_so,
 
                    }
         
@@ -304,17 +307,18 @@ class PhysicsInformedNN:
                       (it, loss_value, elapsed))
                 start_time = time.time()
                                                                                                                           
+        """
         self.optimizer_Adam.minimize(self.sess, 
                                 feed_dict = tf_dict,         
                                 fetches = [self.loss], 
                                 loss_callback = self.callback)        
-                                    
+        """                           
     """
     To do
     """
 
     def predict(self, X_star):
-        tf_dict = {self.x1_tf: X_star[:,0:1], self.x1_tf : X_star[:,1:2]}
+        tf_dict = {self.x1_tf: X_star[:,0:1], self.x2_tf : X_star[:,1:2]}
 
         phi_x_pred = self.sess.run(self.phi_x_pred, tf_dict)
         phi_m_pred = self.sess.run(self.phi_m_pred, tf_dict)
