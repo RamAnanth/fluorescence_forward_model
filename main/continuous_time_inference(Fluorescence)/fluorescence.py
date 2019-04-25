@@ -43,14 +43,8 @@ tf.set_random_seed(1234)
 
 class PhysicsInformedNN:
     # Initialize the class
-    def __init__(self, X, layers, lb, ub):
+    def __init__(self, X, layers):
         
-        X_lb = np.concatenate((0*tb + lb[0], tb), 1) # (lb[0], tb) To be filled
-        X_ub = np.concatenate((0*tb + ub[0], tb), 1) # (ub[0], tb) To be filled
-        
-        self.lb = lb
-        self.ub = ub
-
         self.x1_r = X['r'][:,0:1]
         self.x2_r = X['r'][:,1:2]
         
@@ -96,16 +90,16 @@ class PhysicsInformedNN:
 
         # tf Graphs
         self.phi_x_r_pred, self.phi_m_r_pred,self.phi_x_x1_r_pred, self.phi_m_x1_r_pred, self.phi_x_x2_r_pred, self.phi_m_x2_r_pred = self.net_uv(self.x1_r_tf, self.x2_r_tf)
-        self.g_x_r_pred,self.g_m_r_pred = self.net_g_x1(self.x1_r_tf, self.x2_r_tf)
+        self.g_x_r_pred,self.g_m_r_pred = self.net_g_x1(self.x1_r_tf, self.x2_r_tf,'pos')
 
         self.phi_x_l_pred, self.phi_m_l_pred,self.phi_x_x1_l_pred, self.phi_m_x1_l_pred, self.phi_x_x2_l_pred, self.phi_m_x2_l_pred = self.net_uv(self.x1_l_tf, self.x2_l_tf)
-        self.g_x_l_pred,self.g_m_l_pred = self.net_g_x1(self.x1_l_tf, self.x2_l_tf)
+        self.g_x_l_pred,self.g_m_l_pred = self.net_g_x1(self.x1_l_tf, self.x2_l_tf,'neg')
 
         self.phi_x_t_pred, self.phi_m_t_pred,self.phi_x_x1_t_pred, self.phi_m_x1_t_pred, self.phi_x_x2_t_pred, self.phi_m_x2_t_pred = self.net_uv(self.x1_t_tf, self.x2_t_tf)
-        self.g_x_t_pred,self.g_m_t_pred = self.net_g_x2(self.x1_t_tf, self.x2_t_tf)
+        self.g_x_t_pred,self.g_m_t_pred = self.net_g_x2(self.x1_t_tf, self.x2_t_tf,'pos')
 
         self.phi_x_b_pred, self.phi_m_b_pred,self.phi_x_x1_b_pred, self.phi_m_x1_b_pred, self.phi_x_x2_b_pred, self.phi_m_x2_b_pred = self.net_uv(self.x1_b_tf, self.x2_b_tf)
-        self.g_x_b_pred,self.g_m_b_pred= self.net_g_x2(self.x1_b_tf, self.x2_b_tf)
+        self.g_x_b_pred,self.g_m_b_pred= self.net_g_x2(self.x1_b_tf, self.x2_b_tf,'neg')
 
         self.f_x_pred, self.f_m_pred = self.net_f_uv(self.x1_ts_tf, self.x2_ts_tf)
         self.f_x_fl_pred, self.f_m_fl_pred = self.net_fl_uv(self.x1_fl_tf, self.x2_fl_tf)
@@ -163,7 +157,7 @@ class PhysicsInformedNN:
     def neural_net(self, X, weights, biases):
         num_layers = len(weights) + 1
         
-        H = 2.0*(X - self.lb)/(self.ub - self.lb) - 1.0
+        H = X
         for l in range(0,num_layers-2):
             W = weights[l]
             b = biases[l]
