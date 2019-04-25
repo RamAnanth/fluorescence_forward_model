@@ -402,6 +402,9 @@ if __name__ == "__main__":
     X['so']=np.array(so_pts)
 
     model = PhysicsInformedNN(X,layers)
+    model.train(5000)
+    x_pred,m_pred=model.predict(rb_set)
+
 
     # X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
     # u_star = Exact_u.T.flatten()[:,None]
