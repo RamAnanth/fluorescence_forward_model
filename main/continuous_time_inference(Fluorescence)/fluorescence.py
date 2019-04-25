@@ -44,8 +44,7 @@ tf.set_random_seed(1234)
 class PhysicsInformedNN:
     # Initialize the class
     def __init__(self, X, layers):
-        self.q     =
-        self.gamma =
+        self.ga
         
         self.x1_r = X['r'][:,0:1]
         self.x2_r = X['r'][:,1:2]
@@ -115,7 +114,7 @@ class PhysicsInformedNN:
         self.f_x_pred, self.f_m_pred = self.net_f_uv(self.x1_ts_tf, self.x2_ts_tf)
         self.f_x_fl_pred, self.f_m_fl_pred = self.net_fl_uv(self.x1_fl_tf, self.x2_fl_tf)
 
-        self.f_x_so_pred, self.f_m_so_pred = self.net_so_uv(self.x1_so_tf, self.x2_so_tf, self.q)       
+        self.f_x_so_pred, self.f_m_so_pred = self.net_so_uv(self.x1_so_tf, self.x2_so_tf)       
 
         self.phi_x_pred,self.phi_m_pred=self.net_u(self.x1_tf,self.x2_tf) 
         
@@ -132,8 +131,8 @@ class PhysicsInformedNN:
                     tf.reduce_mean(tf.square(self.g_m_t_pred)) + \
                     tf.reduce_mean(tf.square(self.g_x_b_pred)) + \
                     tf.reduce_mean(tf.square(self.g_m_b_pred)) + \
-                    self.gamma*tf.reduce_mean(tf.square(self.f_x_so_pred))+ \
-                    self.gamma*tf.reduce_mean(tf.square(self.f_m_so_pred))   
+                    self.ga*tf.reduce_mean(tf.square(self.f_x_so_pred))+ \
+                    self.ga*tf.reduce_mean(tf.square(self.f_m_so_pred))   
         
         # # Optimizers
         # self.optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
