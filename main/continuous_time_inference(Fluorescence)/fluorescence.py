@@ -43,7 +43,7 @@ tf.set_random_seed(1234)
 
 class PhysicsInformedNN:
     # Initialize the class
-    def __init__(self, X, layers,x_test):
+    def __init__(self, X, layers):
         self.ga=100
         
         self.x1_r = X['r'][:,0:1]
@@ -67,8 +67,7 @@ class PhysicsInformedNN:
         self.x1_so = X['so'][:,0:1]
         self.x2_so = X['so'][:,1:2]
 
-        self.x1   = x_test[:,0:1]
-        self.x2   = x_test[:,1:2]
+        
            
         # Initialize NNs
         self.layers = layers
@@ -97,8 +96,8 @@ class PhysicsInformedNN:
         self.x1_so_tf = tf.placeholder(tf.float32, shape=[None, self.x1_so.shape[1]])
         self.x2_so_tf = tf.placeholder(tf.float32, shape=[None, self.x2_so.shape[1]])
 
-        self.x1_tf = tf.placeholder(tf.float32, shape=[None, self.x1.shape[1]])
-        self.x2_tf = tf.placeholder(tf.float32, shape=[None, self.x2.shape[1]])
+        self.x1_tf = tf.placeholder(tf.float32, shape=[None, self.x1_so.shape[1]])
+        self.x2_tf = tf.placeholder(tf.float32, shape=[None, self.x2_so.shape[1]])
         
 
         # tf Graphs
@@ -305,7 +304,7 @@ class PhysicsInformedNN:
                       (it, loss_value, elapsed))
                 start_time = time.time()
                                                                                                                           
-        self.optimizer.minimize(self.sess, 
+        self.optimizer_Adam.minimize(self.sess, 
                                 feed_dict = tf_dict,         
                                 fetches = [self.loss], 
                                 loss_callback = self.callback)        
@@ -362,23 +361,23 @@ if __name__ == "__main__":
     X, T = np.meshgrid(x,t)
     """
     dim=2
-    k=10       #-k to +k in both directions
+    k=5     #-k to +k in both directions
     #fluorophore position definition
     layers = [2, 100, 100, 100, 100, 2]
-    so_pts=[[-10,0],[-10,2],[-10,-2],[-10,4],[-10,-4]]
+    so_pts=[[-k,0],[-k,2],[-k,-2],[-k,4],[-k,-4]]
     v_s=0.25 
     v_x1=0
     v_x2=0
-    N_tissue=60000
+    N_tissue=2000
     t_set=-k+(2*k*lhs(dim,N_tissue))
     for i in range(t_set.shape[0]-1,-1,-1):
         if ((t_set[i,0]<=(v_x1+v_s) and t_set[i,0]>=(v_x1-v_s)) and (t_set[i,1]<=(v_x2+v_s) and t_set[i,0]>=(v_x2-v_s))) or ([t_set[i,0],t_set[i,1]] in so_pts):
             t_set=np.delete(t_set,i,axis=0)
-    N_f=20000
+    N_f=1000
     f_set=lhs(dim,N_f)
     f_set[:,0]=v_x1-v_s+(2*v_s*f_set[:,0])
     f_set[:,1]=v_x2-v_s+(2*v_s*f_set[:,1])
-    N_b=1000
+    N_b=100
 
     #Left boundary data
     lb_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
@@ -404,7 +403,7 @@ if __name__ == "__main__":
 
     X['so']=np.array(so_pts)
 
-    model = PhysicsInformedNN(X,layers,rb_set)
+    model = PhysicsInformedNN(X,layers)
     model.train(5)
     x_pred,m_pred=model.predict(rb_set)
     print(x_pred)
