@@ -94,6 +94,9 @@ class PhysicsInformedNN:
 
         self.x1_so_tf = tf.placeholder(tf.float32, shape=[None, self.x1_so.shape[1]])
         self.x2_so_tf = tf.placeholder(tf.float32, shape=[None, self.x2_so.shape[1]])
+
+        self.x1_tf = tf.placeholder(tf.float32, shape=[None, self.x1_so.shape[1]])
+        self.x2_tf = tf.placeholder(tf.float32, shape=[None, self.x2_so.shape[1]])
         
 
         # tf Graphs
@@ -112,7 +115,9 @@ class PhysicsInformedNN:
         self.f_x_pred, self.f_m_pred = self.net_f_uv(self.x1_ts_tf, self.x2_ts_tf)
         self.f_x_fl_pred, self.f_m_fl_pred = self.net_fl_uv(self.x1_fl_tf, self.x2_fl_tf)
 
-        self.f_x_so_pred, self.f_m_so_pred = self.net_so_uv(self.x1_so_tf, self.x2_so_tf, self.q)        
+        self.f_x_so_pred, self.f_m_so_pred = self.net_so_uv(self.x1_so_tf, self.x2_so_tf, self.q)       
+
+        self.phi_x_pred,self.phi_m_pred=self.net_u(self.x1_tf,self.x2_tf) 
         
         # Loss
         self.loss = tf.reduce_mean(tf.square(self.f_x_pred)) + \
@@ -178,7 +183,13 @@ class PhysicsInformedNN:
         b = biases[-1]
         Y = tf.add(tf.matmul(H, W), b)
         return Y
-    
+    def net_u(self, x1,x2):
+        X=tf.concat([x1,x2],1)
+        uv = self.neural_net(X, self.weights, self.biases)
+        u = uv[:,0:1]
+        v = uv[:,1:2]
+        return u, v
+
     def net_uv(self, x1, x2):
         X = tf.concat([x1,x2],1)
         
@@ -300,9 +311,15 @@ class PhysicsInformedNN:
     To do
     """
 
-    # def predict(self, X_star):
-        
-    #     tf_dict = {self.x0_tf: X_star[:,0:1], self.t0_tf: X_star[:,1:2]}
+    def predict(self, X_star):
+        tf_dict = {self.x1_tf: X_star[:,0:1], self.x1_tf : X_star[:,1:2]}
+
+        phi_x_pred = self.sess.run(self.phi_x_pred, tf_dict)
+        phi_m_pred = self.sess.run(self.phi_m_pred, tf_dict)
+
+        return phi_x_pred,phi_m_pred
+
+
         
     #     u_star = self.sess.run(self.u0_pred, tf_dict)  
     #     v_star = self.sess.run(self.v0_pred, tf_dict)  
@@ -326,7 +343,7 @@ if __name__ == "__main__":
     N0 = 50
     N_b = 50
     N_f = 20000
-    layers = [2, 100, 100, 100, 100, 2]
+    
         
     data = scipy.io.loadmat('../Data/NLS.mat')
     
@@ -344,7 +361,7 @@ if __name__ == "__main__":
     dim=2
     k=10       #-k to +k in both directions
     #fluorophore position definition
-
+    layers = [2, 100, 100, 100, 100, 2]
     so_pts=[]
     v_s=0.25 
     v_x1=0
@@ -383,6 +400,8 @@ if __name__ == "__main__":
     X={'r':rb_set,'l':lb_set,'t':ub_set,'b':bb_set,'ts':t_set,'fl':f_set}
 
     X['so']=np.array(so_pts)
+
+    model = PhysicsInformedNN(X,layers)
 
     # X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
     # u_star = Exact_u.T.flatten()[:,None]
