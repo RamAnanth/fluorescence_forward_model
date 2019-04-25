@@ -2,19 +2,21 @@
 
 # Tissue
 
-# mu_x = 
-# mu_m = 
-# k_x = 
-# k_m = 
-# gamma = 
+mu_x = 2
+mu_m =  1.2
+k_x =4.902e-03 
+k_m =9.766e-03 
+gamma = 1 
 # rho_x =
 # rho_m =
 
 # Fluorophore
-# mu_f_x = 
-# mu_f_m = 
-# k_f_x = 
-# k_f_m = 
-# gamma_f = 
+mu_f_x =1.1
+mu_f_m = 0.3
+k_f_x = 4.9456e-03
+k_f_m = 9.94e-03
+gamma_f = 0.1 
 # rho_f_x =
 # rho_f_m =
+
+#q=
