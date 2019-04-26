@@ -35,6 +35,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import time
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import math
+import matplotlib.pyplot as plt
 
 
 np.random.seed(1234)
@@ -372,16 +374,16 @@ if __name__ == "__main__":
     v_s=0.25 
     v_x1=0
     v_x2=0
-    N_tissue=2000
+    N_tissue=10000
     t_set=-k+(2*k*lhs(dim,N_tissue))
     for i in range(t_set.shape[0]-1,-1,-1):
         if ((t_set[i,0]<=(v_x1+v_s) and t_set[i,0]>=(v_x1-v_s)) and (t_set[i,1]<=(v_x2+v_s) and t_set[i,0]>=(v_x2-v_s))) or ([t_set[i,0],t_set[i,1]] in so_pts):
             t_set=np.delete(t_set,i,axis=0)
-    N_f=1000
+    N_f=5000
     f_set=lhs(dim,N_f)
     f_set[:,0]=v_x1-v_s+(2*v_s*f_set[:,0])
     f_set[:,1]=v_x2-v_s+(2*v_s*f_set[:,1])
-    N_b=100
+    N_b=1000
 
     #Left boundary data
     lb_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
@@ -408,9 +410,15 @@ if __name__ == "__main__":
     X['so']=np.array(so_pts)
 
     model = PhysicsInformedNN(X,layers)
-    model.train(5)
+    model.train(1000)
     x_pred,m_pred=model.predict(rb_set)
-    print(x_pred)
+    new_arr=(x_pred**2+m_pred**2)**0.5
+
+    new_x, new_y = zip(*sorted(zip(rb_set[:,1], new_arr)))
+    plt.plot(new_x,new_y)
+    plt.ylabel('Intensity')
+    plt.xlabel('Boundary points')
+    plt.show()
 
 
     # X_star = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
