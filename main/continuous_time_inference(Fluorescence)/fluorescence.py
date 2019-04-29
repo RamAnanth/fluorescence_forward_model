@@ -18,6 +18,8 @@ g is boundary condition
 
 x1 and x2 are dimensions
 """
+from math import e, sqrt, pi
+
 
 
 import sys
@@ -46,7 +48,7 @@ tf.set_random_seed(1234)
 class PhysicsInformedNN:
     # Initialize the class
     def __init__(self, X, layers):
-        self.ga=100
+        self.ga=10000
         
         self.x1_r = X['r'][:,0:1]
         self.x2_r = X['r'][:,1:2]
@@ -138,8 +140,8 @@ class PhysicsInformedNN:
                     tf.reduce_mean(tf.square(self.g_m_t_pred)) + \
                     tf.reduce_mean(tf.square(self.g_x_b_pred)) + \
                     tf.reduce_mean(tf.square(self.g_m_b_pred)) + \
-                    self.ga*tf.reduce_mean(tf.square(self.f_x_so_pred))+ \
-                    self.ga*tf.reduce_mean(tf.square(self.f_m_so_pred))   
+                    tf.reduce_mean(tf.square(self.f_x_so_pred))+ \
+                    tf.reduce_mean(tf.square(self.f_m_so_pred))   
         
         # # Optimizers
         # self.optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
@@ -233,6 +235,12 @@ class PhysicsInformedNN:
         
         v_xx1 = tf.gradients(v_x1, x1)[0]
         v_xx2 = tf.gradients(v_x2, x2)[0]
+
+        m = 0
+        s = 3
+        x = x2
+        gauss = 1/(sqrt(2*pi)*s)*e**(-0.5*((x-m)/s)**2)
+        q=gauss
         
         f_x = -k_x*(u_xx1+u_xx2) + mu_x*u - q
         f_m = -k_m*(v_xx1+v_xx2) + mu_m*v - gamma*u
@@ -367,28 +375,35 @@ if __name__ == "__main__":
     X, T = np.meshgrid(x,t)
     """
     dim=2
-    k=5     #-k to +k in both directions
+    k=5    #-k to +k in both directions
     #fluorophore position definition
     layers = [2, 100, 100, 100, 100, 2]
-    so_pts=[[-k,0],[-k,2],[-k,-2],[-k,4],[-k,-4]]
-    v_s=0.25 
-    v_x1=0
-    v_x2=0
-    N_tissue=10000
-    t_set=-k+(2*k*lhs(dim,N_tissue))
-    for i in range(t_set.shape[0]-1,-1,-1):
-        if ((t_set[i,0]<=(v_x1+v_s) and t_set[i,0]>=(v_x1-v_s)) and (t_set[i,1]<=(v_x2+v_s) and t_set[i,0]>=(v_x2-v_s))) or ([t_set[i,0],t_set[i,1]] in so_pts):
-            t_set=np.delete(t_set,i,axis=0)
-    N_f=5000
-    f_set=lhs(dim,N_f)
-    f_set[:,0]=v_x1-v_s+(2*v_s*f_set[:,0])
-    f_set[:,1]=v_x2-v_s+(2*v_s*f_set[:,1])
-    N_b=1000
-
+    #so_pts=[[-k,0],[-k,-4],[-k,4]]
+    N_b=1500
     #Left boundary data
     lb_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
     x1_lb=-k*np.ones(N_b).reshape(N_b,1)
     lb_set=np.append(x1_lb,lb_set,axis=1)
+    #Gaussian
+    so_set=[]
+    for i in range(lb_set.shape[0]):
+        so_set.append([lb_set[i,0],lb_set[i,1]])
+
+    v_s=0.5
+    v_x1=0
+    v_x2=-3
+    N_tissue=15000
+    t_set=-k+(2*k*lhs(dim,N_tissue))
+    for i in range(t_set.shape[0]-1,-1,-1):
+        if ((t_set[i,0]<=(v_x1+v_s) and t_set[i,0]>=(v_x1-v_s)) and (t_set[i,1]<=(v_x2+v_s) and t_set[i,0]>=(v_x2-v_s))) or ([t_set[i,0],t_set[i,1]] in so_set):
+            t_set=np.delete(t_set,i,axis=0)
+    N_f=6000
+    f_set=lhs(dim,N_f)
+    f_set[:,0]=v_x1-v_s+(2*v_s*f_set[:,0])
+    f_set[:,1]=v_x2-v_s+(2*v_s*f_set[:,1])
+    
+
+
 
     #Right boundary data
     rb_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
@@ -407,10 +422,10 @@ if __name__ == "__main__":
 
     X={'r':rb_set,'l':lb_set,'t':ub_set,'b':bb_set,'ts':t_set,'fl':f_set}
 
-    X['so']=np.array(so_pts)
+    X['so']=lb_set
 
     model = PhysicsInformedNN(X,layers)
-    model.train(1000)
+    model.train(50)
     x_pred,m_pred=model.predict(rb_set)
     new_arr=(x_pred**2+m_pred**2)**0.5
 
