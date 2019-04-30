@@ -1,7 +1,7 @@
 """
 @author: Maziar Raissi
 
-Modifications by Ram Ananth
+Modifications by Ram Ananth and Haresh Rengaraj Rajamohan
 """
 
 """
@@ -47,8 +47,9 @@ tf.set_random_seed(1234)
 
 class PhysicsInformedNN:
     # Initialize the class
-    def __init__(self, X, layers):
+    def __init__(self, X, layers,q):
         self.ga=10000
+        self.q=q
         
         self.x1_r = X['r'][:,0:1]
         self.x2_r = X['r'][:,1:2]
@@ -236,13 +237,9 @@ class PhysicsInformedNN:
         v_xx1 = tf.gradients(v_x1, x1)[0]
         v_xx2 = tf.gradients(v_x2, x2)[0]
 
-        m = 0
-        s = 3
-        x = x2
-        gauss = 1/(sqrt(2*pi)*s)*e**(-0.5*((x-m)/s)**2)
-        q=gauss
         
-        f_x = -k_x*(u_xx1+u_xx2) + mu_x*u - q
+        
+        f_x = -k_x*(u_xx1+u_xx2) + mu_x*u - self.q
         f_m = -k_m*(v_xx1+v_xx2) + mu_m*v - gamma*u
         
         return f_x, f_m
@@ -389,15 +386,21 @@ if __name__ == "__main__":
     for i in range(lb_set.shape[0]):
         so_set.append([lb_set[i,0],lb_set[i,1]])
 
-    v_s=0.5
-    v_x1=0
-    v_x2=-3
-    N_tissue=15000
+    m = 0
+    s = 3
+    val = lb_set[:,1:2]
+    gauss = 1/(sqrt(2*pi)*s)*e**(-0.5*((val-m)/s)**2)
+    q=100*gauss
+
+    v_s=0.25
+    v_x1=-2
+    v_x2=-2
+    N_tissue=10000
     t_set=-k+(2*k*lhs(dim,N_tissue))
     for i in range(t_set.shape[0]-1,-1,-1):
         if ((t_set[i,0]<=(v_x1+v_s) and t_set[i,0]>=(v_x1-v_s)) and (t_set[i,1]<=(v_x2+v_s) and t_set[i,0]>=(v_x2-v_s))) or ([t_set[i,0],t_set[i,1]] in so_set):
             t_set=np.delete(t_set,i,axis=0)
-    N_f=6000
+    N_f=10000
     f_set=lhs(dim,N_f)
     f_set[:,0]=v_x1-v_s+(2*v_s*f_set[:,0])
     f_set[:,1]=v_x2-v_s+(2*v_s*f_set[:,1])
@@ -423,9 +426,9 @@ if __name__ == "__main__":
     X={'r':rb_set,'l':lb_set,'t':ub_set,'b':bb_set,'ts':t_set,'fl':f_set}
 
     X['so']=lb_set
-
-    model = PhysicsInformedNN(X,layers)
-    model.train(50)
+    print(q.shape)
+    model = PhysicsInformedNN(X,layers,q)
+    model.train(130)
     x_pred,m_pred=model.predict(rb_set)
     new_arr=(x_pred**2+m_pred**2)**0.5
 
