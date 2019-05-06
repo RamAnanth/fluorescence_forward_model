@@ -35,10 +35,12 @@ from plotting import newfig, savefig
 from constants import *
 from mpl_toolkits.mplot3d import Axes3D
 import time
+import pandas as pd
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import math
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 np.random.seed(1234)
@@ -131,19 +133,25 @@ class PhysicsInformedNN:
         # Loss
         self.loss = tf.reduce_mean(tf.square(self.f_x_pred)) + \
                     tf.reduce_mean(tf.square(self.f_m_pred))+ \
-                    tf.reduce_mean(tf.square(self.f_x_fl_pred)) + \
-                    tf.reduce_mean(tf.square(self.f_m_fl_pred)) + \
                     tf.reduce_mean(tf.square(self.g_x_r_pred)) + \
                     tf.reduce_mean(tf.square(self.g_m_r_pred)) + \
-                    tf.reduce_mean(tf.square(self.g_x_l_pred)) + \
-                    tf.reduce_mean(tf.square(self.g_m_l_pred)) + \
-                    tf.reduce_mean(tf.square(self.g_x_t_pred)) + \
-                    tf.reduce_mean(tf.square(self.g_m_t_pred)) + \
-                    tf.reduce_mean(tf.square(self.g_x_b_pred)) + \
-                    tf.reduce_mean(tf.square(self.g_m_b_pred)) + \
+                    tf.reduce_mean(tf.square(self.f_x_fl_pred)) + \
+                    tf.reduce_mean(tf.square(self.f_m_fl_pred)) + \
                     tf.reduce_mean(tf.square(self.f_x_so_pred))+ \
-                    tf.reduce_mean(tf.square(self.f_m_so_pred))   
-        
+                    tf.reduce_mean(tf.square(self.f_m_so_pred))
+                    # tf.reduce_mean(tf.square(self.g_x_t_pred)) + \
+                    # tf.reduce_mean(tf.square(self.g_m_t_pred)) + \
+                    # tf.reduce_mean(tf.square(self.g_x_b_pred)) + \
+                    # tf.reduce_mean(tf.square(self.g_m_b_pred)) + \
+                    # tf.reduce_mean(tf.square(self.g_x_l_pred)) + \
+                    # tf.reduce_mean(tf.square(self.g_m_l_pred)) + \
+                    
+
+
+        self.loss = 1000*self.loss
+
+        # self.fl_loss = tf.reduce_mean(tf.square(self.f_x_fl_pred)) + tf.reduce_mean(tf.square(self.f_m_fl_pred))    
+        self.rb_loss = tf.reduce_mean(tf.square(self.g_x_r_pred)) + tf.reduce_mean(tf.square(self.g_m_r_pred))
         # # Optimizers
         # self.optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
         #                                                         method = 'L-BFGS-B', 
@@ -309,9 +317,9 @@ class PhysicsInformedNN:
             # Print
             if it % 10 == 0:
                 elapsed = time.time() - start_time
-                loss_value = self.sess.run(self.loss, tf_dict)
-                print('It: %d, Loss: %.3e, Time: %.2f' % 
-                      (it, loss_value, elapsed))
+                loss_value, rb_loss = self.sess.run([self.loss,self.rb_loss], tf_dict)
+                print('It: %d, Loss: %.3e, Right boundary loss: %.3e, Time: %.2f' % 
+                      (it, loss_value, rb_loss, elapsed))
                 start_time = time.time()
                                                                                                                           
         """
@@ -374,7 +382,7 @@ if __name__ == "__main__":
     dim=2
     k=5    #-k to +k in both directions
     #fluorophore position definition
-    layers = [2, 100, 100, 100, 100, 2]
+    layers = [2, 100, 100, 100, 2]
     #so_pts=[[-k,0],[-k,-4],[-k,4]]
     N_b=1500
     #Left boundary data
@@ -387,14 +395,14 @@ if __name__ == "__main__":
         so_set.append([lb_set[i,0],lb_set[i,1]])
 
     m = 0
-    s = 3
+    s = 2
     val = lb_set[:,1:2]
     gauss = 1/(sqrt(2*pi)*s)*e**(-0.5*((val-m)/s)**2)
-    q=100*gauss
+    q=gauss
 
     v_s=0.25
-    v_x1=-2
-    v_x2=-2
+    v_x1= 1
+    v_x2= -3
     N_tissue=10000
     t_set=-k+(2*k*lhs(dim,N_tissue))
     for i in range(t_set.shape[0]-1,-1,-1):
@@ -412,7 +420,7 @@ if __name__ == "__main__":
     rb_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
     x1_rb=k*np.ones(N_b).reshape(N_b,1)
     rb_set=np.append(x1_rb,rb_set,axis=1)
-
+    # print(rb_set.shape)
     #Top Boundary
     ub_set=np.random.uniform(low=-k,high=k,size=N_b).reshape(N_b,1)
     x2_ub=k*np.ones(N_b).reshape(N_b,1)
@@ -426,16 +434,38 @@ if __name__ == "__main__":
     X={'r':rb_set,'l':lb_set,'t':ub_set,'b':bb_set,'ts':t_set,'fl':f_set}
 
     X['so']=lb_set
-    print(q.shape)
+    # print(q.shape)
+    
+    x = []
+
+    for i in np.linspace(k,-k,101):
+        for j in np.linspace(k,-k,101):
+            x.append([i,j])
+
+    x = np.array(x)
+    # flights = flights.pivot("year","month","passengers")
     model = PhysicsInformedNN(X,layers,q)
     model.train(130)
-    x_pred,m_pred=model.predict(rb_set)
+
+    
+    x_pred,m_pred=model.predict(x)
     new_arr=(x_pred**2+m_pred**2)**0.5
 
-    new_x, new_y = zip(*sorted(zip(rb_set[:,1], new_arr)))
-    plt.plot(new_x,new_y)
-    plt.ylabel('Intensity')
-    plt.xlabel('Boundary points')
+    heatmap_data = np.append(x,new_arr,axis=1)
+    print(heatmap_data[0])
+
+    heatmap_data = pd.DataFrame(heatmap_data,columns =['x1','x2','Intensity'])
+    heatmap_data = heatmap_data.pivot("x2", "x1", "Intensity")
+    # # print(new_arr.shape)
+
+    # fig, ax = newfig(1.0, 0.9)
+    ax = sns.heatmap(heatmap_data)
+    # ax.set_xlim([-5.1,5.1])
+    # ax.set_ylim([-5.1,5.1])
+    # new_x, new_y = zip(*sorted(zip(rb_set[:,1], new_arr)))
+    # plt.plot(new_x,new_y)
+    # plt.ylabel('Intensity')
+    # plt.xlabel('Boundary points')
     plt.show()
 
 
@@ -552,8 +582,7 @@ if __name__ == "__main__":
 #     ax.set_xlabel('$x$')
 #     ax.set_ylabel('$|h(t,x)|$')
 #     ax.axis('square')
-#     ax.set_xlim([-5.1,5.1])
-#     ax.set_ylim([-0.1,5.1])    
+    
 #     ax.set_title('$t = %.2f$' % (t[125]), fontsize = 10)
     
     # savefig('./figures/NLS')  
