@@ -41,7 +41,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import math
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+from matplotlib.ticker import MaxNLocator
 
 np.random.seed(1234)
 tf.set_random_seed(1234)
@@ -112,16 +112,16 @@ class PhysicsInformedNN:
 
         # tf Graphs
         self.phi_x_r_pred, self.phi_m_r_pred,self.phi_x_x1_r_pred, self.phi_m_x1_r_pred, self.phi_x_x2_r_pred, self.phi_m_x2_r_pred = self.net_uv(self.x1_r_tf, self.x2_r_tf)
-        self.g_x_r_pred,self.g_m_r_pred = self.net_g_x1(self.x1_r_tf, self.x2_r_tf,'pos')
+        self.g_x_r_pred,self.g_m_r_pred = self.net_g_x1(self.x1_r_tf, self.x2_r_tf,'neg')
 
         self.phi_x_l_pred, self.phi_m_l_pred,self.phi_x_x1_l_pred, self.phi_m_x1_l_pred, self.phi_x_x2_l_pred, self.phi_m_x2_l_pred = self.net_uv(self.x1_l_tf, self.x2_l_tf)
-        self.g_x_l_pred,self.g_m_l_pred = self.net_g_x1(self.x1_l_tf, self.x2_l_tf,'neg')
+        self.g_x_l_pred,self.g_m_l_pred = self.net_g_x1(self.x1_l_tf, self.x2_l_tf,'pos')
 
         self.phi_x_t_pred, self.phi_m_t_pred,self.phi_x_x1_t_pred, self.phi_m_x1_t_pred, self.phi_x_x2_t_pred, self.phi_m_x2_t_pred = self.net_uv(self.x1_t_tf, self.x2_t_tf)
-        self.g_x_t_pred,self.g_m_t_pred = self.net_g_x2(self.x1_t_tf, self.x2_t_tf,'pos')
+        self.g_x_t_pred,self.g_m_t_pred = self.net_g_x2(self.x1_t_tf, self.x2_t_tf,'neg')
 
         self.phi_x_b_pred, self.phi_m_b_pred,self.phi_x_x1_b_pred, self.phi_m_x1_b_pred, self.phi_x_x2_b_pred, self.phi_m_x2_b_pred = self.net_uv(self.x1_b_tf, self.x2_b_tf)
-        self.g_x_b_pred,self.g_m_b_pred= self.net_g_x2(self.x1_b_tf, self.x2_b_tf,'neg')
+        self.g_x_b_pred,self.g_m_b_pred= self.net_g_x2(self.x1_b_tf, self.x2_b_tf,'pos')
 
         self.f_x_pred, self.f_m_pred = self.net_f_uv(self.x1_ts_tf, self.x2_ts_tf)
         self.f_x_fl_pred, self.f_m_fl_pred = self.net_fl_uv(self.x1_fl_tf, self.x2_fl_tf)
@@ -138,13 +138,13 @@ class PhysicsInformedNN:
                     tf.reduce_mean(tf.square(self.f_x_fl_pred)) + \
                     tf.reduce_mean(tf.square(self.f_m_fl_pred)) + \
                     tf.reduce_mean(tf.square(self.f_x_so_pred))+ \
-                    tf.reduce_mean(tf.square(self.f_m_so_pred))
-                    # tf.reduce_mean(tf.square(self.g_x_t_pred)) + \
-                    # tf.reduce_mean(tf.square(self.g_m_t_pred)) + \
-                    # tf.reduce_mean(tf.square(self.g_x_b_pred)) + \
-                    # tf.reduce_mean(tf.square(self.g_m_b_pred)) + \
-                    # tf.reduce_mean(tf.square(self.g_x_l_pred)) + \
-                    # tf.reduce_mean(tf.square(self.g_m_l_pred)) + \
+                    tf.reduce_mean(tf.square(self.f_m_so_pred))+\
+                    tf.reduce_mean(tf.square(self.g_x_t_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_m_t_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_x_b_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_m_b_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_x_l_pred)) + \
+                    tf.reduce_mean(tf.square(self.g_m_l_pred)) 
                     
 
 
@@ -270,11 +270,11 @@ class PhysicsInformedNN:
         u, v, u_x1, v_x1, u_x2, v_x2  = self.net_uv(x1,x2)
         
         if sign == 'pos':
-            g_x = k_x * u_x1 + rho_x*u
-            g_m = k_m * v_x1 + rho_m*v
+            g_x = u-rho_x * u_x1-4*q
+            g_m = v-rho_m * v_x1-4*q
         elif sign== 'neg':
-            g_x = -k_x * u_x1 + rho_x*u
-            g_m = -k_m * v_x1 + rho_m*v
+            g_x = u-rho_x * u_x1 
+            g_m = v-rho_m * v_x1 
 
         return g_x,g_m
 
@@ -282,11 +282,11 @@ class PhysicsInformedNN:
         u, v, u_x1, v_x1, u_x2, v_x2  = self.net_uv(x1,x2)
         
         if sign == 'pos':
-            g_x = k_x * u_x2 + rho_x*u
-            g_m = k_m * v_x2 + rho_m*v
+            g_x = u+rho_x * u_x2 
+            g_m = v+rho_m * v_x2 
         elif sign== 'neg':
-            g_x = -k_x * u_x2 + rho_x*u
-            g_m = -k_m * v_x2 + rho_m*v
+            g_x = u-rho_x * u_x2 
+            g_m = v-rho_m * v_x2 
 
         return g_x,g_m
 
@@ -380,7 +380,7 @@ if __name__ == "__main__":
     X, T = np.meshgrid(x,t)
     """
     dim=2
-    k=5    #-k to +k in both directions
+    k=5  #-k to +k in both directions
     #fluorophore position definition
     layers = [2, 100, 100, 100, 2]
     #so_pts=[[-k,0],[-k,-4],[-k,4]]
@@ -401,7 +401,7 @@ if __name__ == "__main__":
     q=gauss
 
     v_s=0.25
-    v_x1= 1
+    v_x1= 2
     v_x2= -3
     N_tissue=10000
     t_set=-k+(2*k*lhs(dim,N_tissue))
@@ -447,7 +447,6 @@ if __name__ == "__main__":
     model = PhysicsInformedNN(X,layers,q)
     model.train(130)
 
-    
     x_pred,m_pred=model.predict(x)
     new_arr=(x_pred**2+m_pred**2)**0.5
 
@@ -456,16 +455,17 @@ if __name__ == "__main__":
 
     heatmap_data = pd.DataFrame(heatmap_data,columns =['x1','x2','Intensity'])
     heatmap_data = heatmap_data.pivot("x2", "x1", "Intensity")
+    cmap=sns.color_palette("RdBu_r",1000)
     # # print(new_arr.shape)
 
-    # fig, ax = newfig(1.0, 0.9)
-    ax = sns.heatmap(heatmap_data)
+
+    ax = sns.heatmap(heatmap_data,cmap=cmap)
+    
+    #ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     # ax.set_xlim([-5.1,5.1])
     # ax.set_ylim([-5.1,5.1])
-    # new_x, new_y = zip(*sorted(zip(rb_set[:,1], new_arr)))
-    # plt.plot(new_x,new_y)
-    # plt.ylabel('Intensity')
-    # plt.xlabel('Boundary points')
+    new_x, new_y = zip(*sorted(zip(rb_set[:,1], new_arr)))
+    #plt.plot(new_x,new_y)
     plt.show()
 
 
